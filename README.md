@@ -1,4 +1,4 @@
-# GPU memory benchmark
+# GPU Memory Benchmark
 
 
 ## Introduction
@@ -27,6 +27,7 @@ Other ways of invoking this program can be shown by typing just './benchmark'.
 
 ### Sample Output
 
+~~~
 Running benchmarks with 20 blocks of 134217728 bytes
 Benchmark size: 2560.0000 MB
 
@@ -36,6 +37,6 @@ Read from GPU to CPU:                                       9464.6241 MB/s
 Write from Global Memory to Shared Memory:                  15.4254 TB/s
 Read from Shared Memory to Global Memory:                   11.1297 TB/s
 Optimal Write within Shared Memory (no bank conflicts):     11.2131 TB/s
-
+~~~
 
 
