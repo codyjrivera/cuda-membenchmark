@@ -1,0 +1,12 @@
+#!/bin/bash -l
+
+#SBATCH -p gpuq
+#SBATCH -N 1
+#SBATCH -n 1
+#SBATCH -t 00:20:00
+#SBATCH -J benchmark
+#SBATCH -o benchmark.test.out
+#SBATCH -e benchmark.test.error
+
+
+time ./benchmark 128 M 2.5 G

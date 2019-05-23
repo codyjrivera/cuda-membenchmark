@@ -86,6 +86,6 @@ $(CUDA_OBJ): $(CUDA_OBJ_FILES)
 
 # Clean everything including temporary Emacs files
 clean:
-	rm -f *.o benchmark
+	rm -f *.o *.test.* benchmark
 
 .PHONY: clean
