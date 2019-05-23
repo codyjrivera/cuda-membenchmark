@@ -5,8 +5,8 @@
 
 This benchmark is intended to demonstrate the difference in bandwidth between CPU-GPU
 memory transfers and GPU-GPU internal memory transfers. CPU-GPU transfers are much slower
-than GPU-GPU transfers. Running this benchmark on a test machine with a Nvidia v100 shows that
-CPU-GPU transfers are slower than GPU-GPU transfers by a factor of 10^3. As a result, to avoid
+than GPU-GPU transfers. Running this benchmark on a test machine with a Nvidia v100 shows that these
+transfers are slower by a factor of 10^3. As a result, to avoid
 bottlenecks and excessive transfers, GPU programs must use input data wisely.
 
 
