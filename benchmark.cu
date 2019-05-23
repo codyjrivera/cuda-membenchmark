@@ -39,6 +39,16 @@ void runBenchmarks(BenchmarkRates& rates, int blockSize, int numBlocks)
         exit(1);
     }
 
+    // Allocates second batch of device memory
+    int* devGlobalMem2;
+    cudaMalloc((void**) &devGlobalMem2, blockInts * sizeof(int));
+    if (devGlobalMem2 == NULL)
+    {
+        fprintf(stderr, "Not enough GPU memory\n");
+        exit(1);
+    }
+
+
     // Set up Cuda Event Timer
     cudaEvent_t start, stop;
     float time;
@@ -71,6 +81,19 @@ void runBenchmarks(BenchmarkRates& rates, int blockSize, int numBlocks)
     CUDA_ASSERT(cudaDeviceSynchronize());
     CUDA_ASSERT(cudaEventElapsedTime(&time, start, stop));
     rates.GPUtoCPU = ((long) blockSize * numBlocks) / (0.001 * time);
+    
+    // Additional Test - Global to Global
+    CUDA_ASSERT(cudaEventRecord(start));
+    for (int i = 0; i < numBlocks; i++)
+    {
+        cudaMemcpy((void*) devGlobalMem2, (void*) devGlobalMem, 
+                   blockInts * sizeof(int), cudaMemcpyDeviceToDevice);
+    }
+    CUDA_ASSERT(cudaEventRecord(stop));
+    
+    CUDA_ASSERT(cudaDeviceSynchronize());
+    CUDA_ASSERT(cudaEventElapsedTime(&time, start, stop));
+    rates.globalToGlobal = ((long) blockSize * numBlocks) / (0.001 * time);
     
     // Kernel call variables
     int cudaBlocks = (int) ceil(blockInts / 512.0);
@@ -114,6 +137,7 @@ void runBenchmarks(BenchmarkRates& rates, int blockSize, int numBlocks)
     // Deallocates memory
     free((void*) hostMem);
     cudaFree((void*) devGlobalMem);
+    cudaFree((void*) devGlobalMem2);
 }
 
 

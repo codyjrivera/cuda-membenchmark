@@ -18,6 +18,7 @@ struct BenchmarkRates
 {
     double CPUtoGPU;
     double GPUtoCPU;
+    double globalToGlobal;
     double globalToShared;
     double sharedToGlobal;
     double sharedToShared;
