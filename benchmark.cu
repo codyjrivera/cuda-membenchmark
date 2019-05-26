@@ -13,9 +13,20 @@
 
 #include "benchmark.cuh"
 
+bool selectDevices(int&, int&);
 
 void runBenchmarks(BenchmarkRates& rates, int blockSize, int numBlocks)
 {
+    // Finds two linked devices
+    int firstDeviceID, secondDeviceID;
+    bool multipleDevices = selectDevices(firstDeviceID, secondDeviceID);
+    // If multiple GPUs cannot be used, 
+    if (!multipleDevices)
+    {
+        fprintf(stderr, "No GPUs can be paired, and the benchmark cannot be run\n");
+        exit(1);
+    }
+
     int blockInts = (int) ceil(blockSize / 8.0);
     // Allocates and sets host memory
     int* hostMem = (int*) malloc(blockInts * sizeof(int));
@@ -30,6 +41,7 @@ void runBenchmarks(BenchmarkRates& rates, int blockSize, int numBlocks)
         hostMem[i] = i % 1024;
     }
 
+    CUDA_ASSERT(cudaSetDevice(firstDeviceID));
     // Allocates device memory
     int* devGlobalMem;
     cudaMalloc((void**) &devGlobalMem, blockInts * sizeof(int));
@@ -48,7 +60,17 @@ void runBenchmarks(BenchmarkRates& rates, int blockSize, int numBlocks)
         exit(1);
     }
 
-
+    CUDA_ASSERT(cudaSetDevice(secondDeviceID));
+    // Allocates device memory on second GPU
+    int* devGlobalMemOtherGPU;
+    cudaMalloc((void**) &devGlobalMemOtherGPU, blockInts * sizeof(int));
+    if (devGlobalMemOtherGPU == NULL)
+    {
+        fprintf(stderr, "Not enough GPU memory\n");
+        exit(1);
+    }
+    CUDA_ASSERT(cudaSetDevice(firstDeviceID));
+    
     // Set up Cuda Event Timer
     cudaEvent_t start, stop;
     float time;
@@ -82,6 +104,20 @@ void runBenchmarks(BenchmarkRates& rates, int blockSize, int numBlocks)
     CUDA_ASSERT(cudaEventElapsedTime(&time, start, stop));
     rates.GPUtoCPU = ((long) blockSize * numBlocks) / (0.001 * time);
     
+    // Additional Test - GPU to GPU
+    CUDA_ASSERT(cudaDeviceEnablePeerAccess(secondDeviceID, 0));
+    CUDA_ASSERT(cudaEventRecord(start));
+    for (int i = 0; i < numBlocks; i++)
+    {
+        cudaMemcpy((void*) devGlobalMemOtherGPU, 
+                   (void*) devGlobalMem, blockInts * sizeof(int), cudaMemcpyDefault);
+    }
+    CUDA_ASSERT(cudaEventRecord(stop));
+    
+    CUDA_ASSERT(cudaDeviceSynchronize());
+    CUDA_ASSERT(cudaEventElapsedTime(&time, start, stop));
+    rates.GPUtoGPU = ((long) blockSize * numBlocks) / (0.001 * time);
+
     // Additional Test - Global to Global
     CUDA_ASSERT(cudaEventRecord(start));
     for (int i = 0; i < numBlocks; i++)
@@ -138,6 +174,31 @@ void runBenchmarks(BenchmarkRates& rates, int blockSize, int numBlocks)
     free((void*) hostMem);
     cudaFree((void*) devGlobalMem);
     cudaFree((void*) devGlobalMem2);
+    cudaFree((void*) devGlobalMemOtherGPU);
+}
+
+
+/*
+  Helper function to select a pair of GPUs for the benchmark
+ */
+bool selectDevices(int& firstID, int& secondID)
+{
+    int numDevices, flag;
+    CUDA_ASSERT(cudaGetDeviceCount(&numDevices));
+    for (int i = 0; i < numDevices; i++)
+    {
+        for (int j = 0; j < numDevices; j++)
+        {
+            CUDA_ASSERT(cudaDeviceCanAccessPeer(&flag, i, j));
+            if (flag == 1)
+            {
+                firstID = i;
+                secondID = j;
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 

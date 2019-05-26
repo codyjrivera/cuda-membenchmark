@@ -123,6 +123,9 @@ int main(int argc, char** argv)
     printf("%*s", -60, "Read from GPU to CPU: ");
     printNormalizedSize(rawRates.GPUtoCPU);
     printf("/s\n");
+    printf("%*s", -60, "Write from one GPU to another GPU (NVLink): ");
+    printNormalizedSize(rawRates.GPUtoGPU);
+    printf("/s\n");
     printf("%*s", -60, "Write from Global Memory to Global Memory: ");
     printNormalizedSize(rawRates.globalToGlobal);
     printf("/s\n");

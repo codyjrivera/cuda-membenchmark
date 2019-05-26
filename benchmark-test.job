@@ -9,4 +9,4 @@
 #SBATCH -e benchmark.test.error
 
 
-time ./benchmark 128 M 2.5 G
+time ./benchmark 32 M 3200 M
