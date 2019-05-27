@@ -27,7 +27,7 @@ void runBenchmarks(BenchmarkRates& rates, int blockSize, int numBlocks)
         exit(1);
     }
 
-    int blockInts = (int) ceil(blockSize / 8.0);
+    int blockInts = (int) ceil(blockSize / 4.0);
     // Allocates and sets host memory
     int* hostMem = (int*) malloc(blockInts * sizeof(int));
     if (hostMem == NULL)
@@ -78,6 +78,10 @@ void runBenchmarks(BenchmarkRates& rates, int blockSize, int numBlocks)
     CUDA_ASSERT(cudaEventCreate(&start));
     CUDA_ASSERT(cudaEventCreate(&stop));
     
+    // CUDA call variables
+    int cudaBlocks = (int) ceil(blockInts / 512.0);
+    int cudaThreads = 512;
+
     // TEST 1 - CPU to GPU
     CUDA_ASSERT(cudaEventRecord(start));
     for (int i = 0; i < numBlocks; i++)
@@ -104,13 +108,28 @@ void runBenchmarks(BenchmarkRates& rates, int blockSize, int numBlocks)
     CUDA_ASSERT(cudaEventElapsedTime(&time, start, stop));
     rates.GPUtoCPU = ((long) blockSize * numBlocks) / (0.001 * time);
     
-    // Additional Test - GPU to GPU
+    /*
+    // Additional Test - GPU to GPU Async
     CUDA_ASSERT(cudaDeviceEnablePeerAccess(secondDeviceID, 0));
     CUDA_ASSERT(cudaEventRecord(start));
     for (int i = 0; i < numBlocks; i++)
     {
+        cudaMemcpyPeerAsync(devGlobalMemOtherGPU, secondDeviceID,
+                       devGlobalMem, firstDeviceID, blockInts * sizeof(int));
+    }
+    CUDA_ASSERT(cudaEventRecord(stop));
+    
+    CUDA_ASSERT(cudaDeviceSynchronize());
+    CUDA_ASSERT(cudaEventElapsedTime(&time, start, stop));
+    rates.GPUtoGPUAsync = ((long) blockSize * numBlocks) / (0.001 * time);
+    */
+
+    // Additional Test - GPU to GPU
+    CUDA_ASSERT(cudaEventRecord(start));
+    for (int i = 0; i < numBlocks; i++)
+    {
         cudaMemcpy((void*) devGlobalMemOtherGPU, 
-                   (void*) devGlobalMem, blockInts * sizeof(int), cudaMemcpyDefault);
+                   (void*) devGlobalMem, blockInts * sizeof(int), cudaMemcpyDeviceToDevice);
     }
     CUDA_ASSERT(cudaEventRecord(stop));
     
@@ -129,12 +148,9 @@ void runBenchmarks(BenchmarkRates& rates, int blockSize, int numBlocks)
     
     CUDA_ASSERT(cudaDeviceSynchronize());
     CUDA_ASSERT(cudaEventElapsedTime(&time, start, stop));
-    rates.globalToGlobal = ((long) blockSize * numBlocks) / (0.001 * time);
-    
-    // Kernel call variables
-    int cudaBlocks = (int) ceil(blockInts / 512.0);
-    int cudaThreads = 512;
-    
+    // Account for bidirectional
+    rates.globalToGlobal = ((long) 2 * blockSize * numBlocks) / (0.001 * time);
+        
     // TEST 3 - Global to Shared
     CUDA_ASSERT(cudaEventRecord(start));
     globalToSharedTest<<<cudaBlocks, cudaThreads, cudaThreads * sizeof(int)>>>(devGlobalMem, blockInts, numBlocks); 
@@ -201,6 +217,18 @@ bool selectDevices(int& firstID, int& secondID)
     return false;
 }
 
+
+/* 
+   GPU kernel for async GPU-GPU transfers
+*/
+__global__ void asyncGPUtoGPU(int* dest, int* source, int count)
+{
+    const int thread = threadIdx.x + (blockDim.x * blockIdx.x);
+    if (thread < count)
+    {
+        dest[thread] = source[thread];
+    }
+}
 
 /*
   GPU kernel for Global to Shared Copying -- One block is copied in parallel

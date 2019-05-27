@@ -18,6 +18,7 @@ struct BenchmarkRates
 {
     double CPUtoGPU;
     double GPUtoCPU;
+    double GPUtoGPUAsync;
     double GPUtoGPU;
     double globalToGlobal;
     double globalToShared;
@@ -30,6 +31,7 @@ struct BenchmarkRates
 extern void runBenchmarks(BenchmarkRates&, int, int);
 
 // CUDA kernels
+__global__ void asyncGPUtoGPU(int*, int*, int);
 __global__ void globalToSharedTest(int*, int, int);
 __global__ void sharedToGlobalTest(int*, int, int);
 __global__ void sharedToSharedTest(int);
